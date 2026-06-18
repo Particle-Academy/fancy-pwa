@@ -134,19 +134,26 @@ export function fancyPwa(options: FancyPwaPluginOptions): Plugin {
         .map((name) => join(base, name));
       const version = hashOf(precache.join("|"));
 
-      // 3) Read + transform the app SW via Vite's own esbuild, then prepend the
-      //    injected globals. `devSw` has no effect here (build-only hook).
-      const { transformWithEsbuild } = await import("vite");
-      const fs = await import("node:fs/promises");
-      const source = await fs.readFile(sw, "utf8");
+      // 3) BUNDLE the app SW into a single classic-worker IIFE (inlining its
+      //    imports from `/sw` etc.) via esbuild, with the precache globals
+      //    injected as a banner. transform-only would leave bare ESM `import`s
+      //    that a classic service worker can't evaluate ("script evaluation
+      //    failed"). esbuild ships with Vite, so it's resolvable in a build.
+      const esbuild = await import("esbuild");
       const injected =
         `globalThis.__FANCY_PRECACHE=${JSON.stringify(precache)};` +
-        `globalThis.__FANCY_VERSION=${JSON.stringify(version)};\n`;
-      const { code } = await transformWithEsbuild(injected + source, sw, {
-        loader: sw.endsWith(".ts") ? "ts" : "js",
+        `globalThis.__FANCY_VERSION=${JSON.stringify(version)};`;
+      const built = await esbuild.build({
+        entryPoints: [sw],
+        bundle: true,
         format: "iife",
+        platform: "browser",
+        target: "es2020",
         minify: true,
+        write: false,
+        banner: { js: injected },
       });
+      const code = built.outputFiles?.[0]?.text ?? "";
 
       this.emitFile({ type: "asset", fileName: swDest, source: code });
     },

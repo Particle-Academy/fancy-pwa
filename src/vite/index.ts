@@ -84,6 +84,10 @@ export function fancyPwa(options: FancyPwaPluginOptions): Plugin {
   // laravel-vite-plugin, "/" for a root SPA) so precache URLs + injected hrefs
   // point at the ACTUAL served asset paths, not a wrong "/"-rooted guess.
   let base = "/";
+  // The SSR build (`vite build --ssr`) runs every plugin too, but its chunks
+  // aren't the client assets the browser serves — emitting the SW/manifest there
+  // (or letting SSR chunk names into the precache) yields 404s. Skip it.
+  let isSsr = false;
   const join = (b: string, p: string): string =>
     "/" + [b.replace(/^\/+|\/+$/g, ""), p.replace(/^\/+/, "")].filter(Boolean).join("/");
 
@@ -121,6 +125,8 @@ export function fancyPwa(options: FancyPwaPluginOptions): Plugin {
      * client bundle's asset list is known.
      */
     async generateBundle(_outputOptions, bundle) {
+      if (isSsr) return; // client build only — SSR chunks aren't browser-served
+
       // 1) Manifest.
       this.emitFile({
         type: "asset",
@@ -128,10 +134,17 @@ export function fancyPwa(options: FancyPwaPluginOptions): Plugin {
         source: JSON.stringify(manifest, null, 2),
       });
 
-      // 2) Collect the emitted asset/chunk filenames to precache.
-      const precache = Object.keys(bundle)
-        .filter((name) => !name.endsWith(".map") && name !== swDest && name !== manifestDest)
-        .map((name) => join(base, name));
+      // 2) Precache the APP SHELL — entry chunks + CSS only, not every lazy
+      //    route chunk (those are runtime-cached on demand by the SW's
+      //    staleWhileRevalidate). Keeps install fast + the cache lean.
+      const precache = Object.values(bundle)
+        .filter((item): boolean => {
+          if (item.fileName.endsWith(".map")) return false;
+          if (item.fileName === swDest || item.fileName === manifestDest) return false;
+          if (item.type === "chunk") return item.isEntry;
+          return item.type === "asset" && item.fileName.endsWith(".css");
+        })
+        .map((item) => join(base, item.fileName));
       const version = hashOf(precache.join("|"));
 
       // 3) BUNDLE the app SW into a single classic-worker IIFE (inlining its
@@ -162,6 +175,7 @@ export function fancyPwa(options: FancyPwaPluginOptions): Plugin {
       // Capture the resolved public base ("/build/" under Laravel, "/" for a
       // root SPA) so precache URLs + injected hrefs are correct on every host.
       base = config.base || "/";
+      isSsr = !!config.build?.ssr;
       // In dev (`serve`), `apply:"build"` already excludes us; this guard keeps
       // `devSw` meaningful if a host wires the plugin into a custom serve flow.
       if (config.command === "serve" && !devSw) return;

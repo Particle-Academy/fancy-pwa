@@ -1,0 +1,14 @@
+/*
+ * @particle-academy/fancy-pwa styles.
+ *
+ * Almost all chrome styling is inherited from react-fancy (Callout / Button /
+ * Toast). This file exists so the `./styles.css` export is real and so apps
+ * have a single, optional place to tweak PWA-specific affordances.
+ */
+
+/* Hide the default install banner when the app is running standalone. */
+@media (display-mode: standalone) {
+  .fancy-pwa-install-banner {
+    display: none;
+  }
+}

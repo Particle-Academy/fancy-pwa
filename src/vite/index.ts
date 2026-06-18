@@ -141,7 +141,13 @@ export function fancyPwa(options: FancyPwaPluginOptions): Plugin {
         .filter((item): boolean => {
           if (item.fileName.endsWith(".map")) return false;
           if (item.fileName === swDest || item.fileName === manifestDest) return false;
-          if (item.type === "chunk") return item.isEntry;
+          if (item.type === "chunk") {
+            // Entry chunks only — but skip CSS-only facade chunks. A CSS input
+            // (Laravel's app.css/showcase.css/…) produces an `isEntry` .js
+            // facade with empty code that Vite never writes to disk → a 404 that
+            // would reject cache.addAll. Real JS entries have code.
+            return item.isEntry && (item.code?.trim().length ?? 0) > 0;
+          }
           return item.type === "asset" && item.fileName.endsWith(".css");
         })
         .map((item) => join(base, item.fileName));

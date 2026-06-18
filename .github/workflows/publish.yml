@@ -26,12 +26,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      # First publish: a classic NPM_TOKEN bootstraps the package onto the
-      # registry (OIDC Trusted Publishing can only be configured AFTER the
-      # package exists). Once v0.1.0 is live, configure Trusted Publishing on
-      # npmjs.com and DELETE the `env:` block below so this step publishes via
-      # OIDC provenance with no stored secret.
+      # Trusted Publishing (OIDC) — no tokens. Bootstrapped once with NPM_TOKEN;
+      # configure the Trusted Publisher on npmjs.com + revoke that token so
+      # releases ship via OIDC.
       - name: Publish
         run: npx -y npm@latest publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

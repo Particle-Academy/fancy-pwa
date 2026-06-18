@@ -26,8 +26,9 @@ jobs:
       - name: Build
         run: npm run build
 
-      # Trusted Publishing (OIDC) — no tokens. Bootstrapped once with NPM_TOKEN;
-      # configure the Trusted Publisher on npmjs.com + revoke that token so
-      # releases ship via OIDC.
+      # Still on the NPM_TOKEN secret until the Trusted Publisher is configured on
+      # npmjs.com. Once it is: delete the env block + revoke the token → OIDC.
       - name: Publish
         run: npx -y npm@latest publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

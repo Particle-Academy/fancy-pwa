@@ -80,8 +80,12 @@ export function fancyPwa(options: FancyPwaPluginOptions): Plugin {
     devSw = false,
   } = options;
 
-  const swPublicPath = "/" + swDest.replace(/^\/+/, "");
-  const manifestPublicPath = "/" + manifestDest.replace(/^\/+/, "");
+  // Resolved from Vite's `base` in configResolved (e.g. "/build/" under
+  // laravel-vite-plugin, "/" for a root SPA) so precache URLs + injected hrefs
+  // point at the ACTUAL served asset paths, not a wrong "/"-rooted guess.
+  let base = "/";
+  const join = (b: string, p: string): string =>
+    "/" + [b.replace(/^\/+|\/+$/g, ""), p.replace(/^\/+/, "")].filter(Boolean).join("/");
 
   return {
     name: "fancy-pwa",
@@ -92,7 +96,7 @@ export function fancyPwa(options: FancyPwaPluginOptions): Plugin {
       order: "post",
       handler() {
         const tags: import("vite").HtmlTagDescriptor[] = [
-          { tag: "link", attrs: { rel: "manifest", href: manifestPublicPath }, injectTo: "head" },
+          { tag: "link", attrs: { rel: "manifest", href: join(base, manifestDest) }, injectTo: "head" },
         ];
         if (manifest.theme_color) {
           tags.push({
@@ -104,7 +108,7 @@ export function fancyPwa(options: FancyPwaPluginOptions): Plugin {
         if (registerSw) {
           tags.push({
             tag: "script",
-            children: REGISTER_SNIPPET(swPublicPath).replace(/^<script>|<\/script>$/g, ""),
+            children: REGISTER_SNIPPET(join(base, swDest)).replace(/^<script>|<\/script>$/g, ""),
             injectTo: "body",
           });
         }
@@ -127,7 +131,7 @@ export function fancyPwa(options: FancyPwaPluginOptions): Plugin {
       // 2) Collect the emitted asset/chunk filenames to precache.
       const precache = Object.keys(bundle)
         .filter((name) => !name.endsWith(".map") && name !== swDest && name !== manifestDest)
-        .map((name) => "/" + name);
+        .map((name) => join(base, name));
       const version = hashOf(precache.join("|"));
 
       // 3) Read + transform the app SW via Vite's own esbuild, then prepend the
@@ -148,6 +152,9 @@ export function fancyPwa(options: FancyPwaPluginOptions): Plugin {
     },
 
     configResolved(config) {
+      // Capture the resolved public base ("/build/" under Laravel, "/" for a
+      // root SPA) so precache URLs + injected hrefs are correct on every host.
+      base = config.base || "/";
       // In dev (`serve`), `apply:"build"` already excludes us; this guard keeps
       // `devSw` meaningful if a host wires the plugin into a custom serve flow.
       if (config.command === "serve" && !devSw) return;

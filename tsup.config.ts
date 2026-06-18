@@ -19,6 +19,11 @@ export default defineConfig({
     "@particle-academy/react-fancy",
     "@particle-academy/fancy-auto-common",
     "vite",
+    // esbuild must NOT be bundled — it ships its own CJS `require("fs")` that
+    // breaks when inlined into an ESM build ("Dynamic require of 'fs' is not
+    // supported"). The /vite plugin dynamic-imports it at runtime; it resolves
+    // from the consumer's install (esbuild ships with Vite).
+    "esbuild",
     "node:*",
   ],
   treeshake: true,

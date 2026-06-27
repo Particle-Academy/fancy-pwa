@@ -1,6 +1,6 @@
 {
   "name": "@particle-academy/fancy-pwa",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Lean, framework-agnostic, SSR-safe PWA layer for the Fancy UI suite — install prompt, online/offline, a Workbox-free service-worker toolkit, a Vite plugin, and update detection composed on fancy-app-update.",
   "repository": {
     "type": "git",

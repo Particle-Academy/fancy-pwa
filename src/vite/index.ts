@@ -64,8 +64,10 @@ function hashOf(input: string): string {
   return (h >>> 0).toString(36);
 }
 
+// The bare SW-registration JS body (no <script> wrapper): Vite's
+// HtmlTagDescriptor supplies the <script> tag itself via `children`.
 const REGISTER_SNIPPET = (swPath: string) =>
-  `<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('${swPath}')})}</script>`;
+  `if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('${swPath}')})}`;
 
 /**
  * The Fancy PWA Vite plugin. Heavy work runs only under `apply:"build"`.
@@ -112,7 +114,7 @@ export function fancyPwa(options: FancyPwaPluginOptions): Plugin {
         if (registerSw) {
           tags.push({
             tag: "script",
-            children: REGISTER_SNIPPET(join(base, swDest)).replace(/^<script>|<\/script>$/g, ""),
+            children: REGISTER_SNIPPET(join(base, swDest)),
             injectTo: "body",
           });
         }

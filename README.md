@@ -1,5 +1,7 @@
 # @particle-academy/fancy-pwa
 
+[![Fancified](art/fancified.svg)](https://particle.academy)
+
 A lean, **framework-agnostic, SSR-safe** Progressive Web App layer for the
 [Fancy UI](https://github.com/Particle-Academy) suite. No Workbox, no heavy
 dependencies. Every hook is window-guarded with no module-level browser access,
